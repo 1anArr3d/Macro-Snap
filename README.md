@@ -1,14 +1,24 @@
-# Food logger
+# Macro Snap
 
-You send a food photo from an iPhone Shortcut. A Google Apps Script web app asks Claude to estimate the nutrition, appends the results to a Google Sheet, and returns the totals so the Shortcut can log them to Apple Health.
+Snap a photo of your meal and describe it in a sentence. Claude estimates the calories and macros, the results go into a Google Sheet, and iPhone widgets show your progress for the day.
+
+- **Log:** an iPhone Shortcut sends the photo and description to a Google Apps Script web app. Claude treats the description as the main source and uses the photo to fill gaps.
+- **Track:** the Home Screen widget shows calories, protein and carbs as progress bars against target ranges. They're grey below target, colored in range and red when over. A ↻ button refreshes them in place. Lock Screen versions show a calorie ring and compact bars.
+- **Days run from 5 AM to 5 AM**, so late-night meals count toward the day you were actually on.
+
+<!-- Screenshots: add images/widget.png and images/meal.png, then uncomment.
+![Widget](images/widget.png) ![Logged meal](images/meal.png)
+-->
 
 | File | What it does |
 |---|---|
-| `main.js` | `doPost` (checks the secret, picks a handler), `handleFood`, `testWithSampleImage` |
+| `main.js` | `doPost` (checks the secret, picks a handler), `handleFood`, `handleToday` (totals for the widget), `testWithSampleImage` |
 | `claude.js` | Claude Messages API call, JSON parsing with one retry |
 | `sheet.js` | `setup()` (tabs, formulas, charts), `appendFoodRows` |
 | `appsscript.json` | manifest: scopes and web app settings |
 | `SHORTCUT.md` | how to build the iPhone Shortcut |
+| `scripting-widget/` | Home Screen and Lock Screen widget for the Scripting iOS app (`widget.tsx`), plus the ↻ refresh intent (`app_intents.tsx`) |
+| `archive/` | unfinished experiments (Scriptable, an in-app logging screen). Photo access didn't work in those apps. |
 
 ## 1. One-time setup
 
@@ -39,7 +49,7 @@ You send a food photo from an iPhone Shortcut. A Google Apps Script web app asks
    - `SHARED_SECRET`: a long random string, for example from `openssl rand -hex 24`. The Shortcut sends this too.
 8. Run `testWithSampleImage` in the editor. The execution log should show a JSON summary, and new rows should appear on **Food** and **Daily**. This also grants the "connect to external service" permission the web app needs.
 
-Change `timeZone` in `appsscript.json` if you're not on US Eastern time. Also set **File → Settings → Time zone** in the Sheet to match, because the Daily totals group by the Sheet's time zone.
+Change `timeZone` in `appsscript.json` if you're not on US Central time. Also set **File → Settings → Time zone** in the Sheet to match, because the Daily totals group by the Sheet's time zone.
 
 ## 2. Deploy as a web app
 
@@ -81,11 +91,11 @@ A wrong secret returns `{"error":"Unauthorized"}`. Errors always come back as `{
 
 ## Adding body measurements later
 
-`main.js` routes requests through `HANDLERS = { food: handleFood }`. To support `type: "body"`, write a `handleBody(req)` that appends `[date, weight, bodyFat, source]` to the **Body** tab and add `body: handleBody` to that map.
+`main.js` routes requests through `HANDLERS = { food: handleFood, today: handleToday }`. To support `type: "body"`, write a `handleBody(req)` that appends `[date, weight, bodyFat, source]` to the **Body** tab and add `body: handleBody` to that map.
 
 ## Phone scripts
 
 The widget and phone scripts contain `YOUR_DEPLOYMENT_URL` and `your-shared-secret`. Replace both with your own values in the copy on your phone only, never in the repo.
 
-Only `scripting-widget/` is in use. `scripting-logfood/` and the `*-scriptable.js` files are unfinished experiments: photo access didn't work in those apps.
+To install the widget, create a script in the Scripting app, paste in both files from `scripting-widget/`, then add it to your Home Screen or Lock Screen.
 
